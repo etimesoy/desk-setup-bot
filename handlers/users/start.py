@@ -9,7 +9,7 @@ from keyboards.inline import get_bot_functionality
 from keyboards.inline.referral_stuff import referral_buttons
 from keyboards.inline.callback_data import bot_functionality
 from loader import dp
-from utils.misc import get_channel_participants
+from utils.db_api import quick_commands as commands
 
 
 @dp.message_handler(CommandStart(deep_link=re.compile(r"^\d{4,15}$")))
@@ -21,6 +21,7 @@ async def bot_start_with_deep_link(message_or_call: Union[types.Message, types.C
         message = message_or_call.message
     user_full_name = message_or_call.from_user.full_name
     user_id = message_or_call.from_user.id
+    await commands.add_user(user_id, user_full_name)
     await message.answer(f"Привет, {user_full_name}! "
                          f"Добро пожаловать в магазин клевых вещей для твоего рабочего места😉\n"
                          f"Вот, что я умею:", reply_markup=get_bot_functionality(user_id))
