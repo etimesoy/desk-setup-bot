@@ -16,3 +16,10 @@ referral_buttons = InlineKeyboardMarkup(inline_keyboard=[
                              callback_data=bot_functionality.new("check_channel_subscription"))
     ]
 ])
+
+referral_system = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="Создать пригласительную ссылку",
+                             callback_data=bot_functionality.new("create_referral_link"))
+    ]
+])
