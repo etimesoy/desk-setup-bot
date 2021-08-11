@@ -5,7 +5,7 @@ from keyboards.inline.callback_data import bot_functionality
 
 
 def get_bot_functionality(user_id: int) -> InlineKeyboardMarkup:
-    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard = InlineKeyboardMarkup(row_width=2)
     if str(user_id) in ADMINS:
         admin_button = InlineKeyboardButton(text="Перейти в админку",
                                             callback_data=bot_functionality.new("show_admin_panel"))
