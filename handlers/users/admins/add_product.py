@@ -1,29 +1,61 @@
-from typing import Union
-
+import markup as markup
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from handlers.users.admins import show_admin_panel
 from keyboards.inline.callback_data import bot_functionality, add_product
 from loader import dp, db
 from states import AddProduct
 
 
+@dp.callback_query_handler(add_product.filter(level="1"), state=AddProduct.enter_price)
+@dp.callback_query_handler(add_product.filter(level="2"), state=AddProduct.enter_description)
+async def navigate_back_button(call: types.CallbackQuery, callback_data: dict,
+                               state: FSMContext):
+    await call.message.delete()
+    product_data = await state.get_data()
+
+    levels = {
+        "1": {
+            "product_property": "name",
+            "function": add_product_name
+        },
+        "2": {
+            "product_property": "photo",
+            "function": add_product_photo
+        }
+    }
+    current_level = callback_data["level"]
+
+    product_property = product_data.get(levels[current_level]["product_property"])
+    await levels[current_level]["function"](call.message, state, product_property)
+
+
+@dp.callback_query_handler(bot_functionality.filter(functionality_name="show_admin_panel"),
+                           state=AddProduct.enter_name)
+async def back_to_admin_panel(call: types.CallbackQuery, callback_data: dict,
+                              state: FSMContext):
+    await state.reset_state()
+    await show_admin_panel(call, callback_data)
+
+
 @dp.callback_query_handler(add_product.filter(level="0"), state=AddProduct.enter_photo)
 @dp.callback_query_handler(bot_functionality.filter(functionality_name="add_product"))
-async def add_product_start(call: types.CallbackQuery):
-    await call.message.answer("Введите название")
+async def add_product_start(call: types.CallbackQuery, state: FSMContext):
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(
+        "Назад в админку",
+        callback_data=bot_functionality.new("show_admin_panel")
+    )]])
+    await call.message.edit_text("Введите название", reply_markup=markup)
     await AddProduct.enter_name.set()
 
 
-@dp.callback_query_handler(add_product.filter(level="1"), state=AddProduct.enter_price)
 @dp.message_handler(state=AddProduct.enter_name)
-async def add_product_name(message_or_call: Union[types.Message, types.CallbackQuery], state: FSMContext):
-    product_data = await state.get_data()
-    if isinstance(message_or_call, types.Message):
+async def add_product_name(message_or_call: types.Message, state: FSMContext,
+                           product_name: str = None):
+    if product_name is None:
         product_name = message_or_call.text
-    else:
-        product_name = product_data.get("name")
     await state.update_data(name=product_name)
 
     CURRENT_LEVEL = 1
@@ -33,21 +65,15 @@ async def add_product_name(message_or_call: Union[types.Message, types.CallbackQ
         ))
     ]])
 
-    if isinstance(message_or_call, types.Message):
-        await message_or_call.answer("Введите ссылку на фотографию", reply_markup=markup)
-    else:
-        await message_or_call.message.answer("Введите ссылку на фотографию", reply_markup=markup)
+    await message_or_call.answer("Введите ссылку на фотографию", reply_markup=markup)
     await AddProduct.enter_photo.set()
 
 
-@dp.callback_query_handler(add_product.filter(level="2"), state=AddProduct.enter_description)
 @dp.message_handler(state=AddProduct.enter_photo)
-async def add_product_photo(message_or_call: Union[types.Message, types.CallbackQuery], state: FSMContext):
-    product_data = await state.get_data()
-    if isinstance(message_or_call, types.Message):
-        product_photo = message_or_call.text
-    else:
-        product_photo = product_data.get("photo")
+async def add_product_photo(message: types.Message, state: FSMContext,
+                            product_photo: str = None):
+    if product_photo is None:
+        product_photo = message.text
     await state.update_data(photo=product_photo)
 
     CURRENT_LEVEL = 2
@@ -57,14 +83,10 @@ async def add_product_photo(message_or_call: Union[types.Message, types.Callback
         ))
     ]])
 
-    if isinstance(message_or_call, types.Message):
-        await message_or_call.answer("Введите цену", reply_markup=markup)
-    else:
-        await message_or_call.message.answer("Введите цену", reply_markup=markup)
+    await message.answer("Введите цену", reply_markup=markup)
     await AddProduct.enter_price.set()
 
 
-# @dp.callback_query_handler(add_product.filter(level="3"))
 @dp.message_handler(state=AddProduct.enter_price)
 async def add_product_price(message: types.Message, state: FSMContext):
     product_price = message.text
