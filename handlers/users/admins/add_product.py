@@ -5,7 +5,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from keyboards.inline.callback_data import bot_functionality, add_product
-from loader import dp
+from loader import dp, db
 from states import AddProduct
 
 
@@ -93,6 +93,7 @@ async def add_product_description(message: types.Message, state: FSMContext):
                               f"Фотография: {product['photo']}",
                               f"Цена: {product['price']}",
                               f"Описание: {product['description']}"])
+    await db.add_product(product['name'], product['photo'], int(product['price']), product['description'])
 
     markup = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton("Главное меню", callback_data=bot_functionality.new("answer_menu")),
