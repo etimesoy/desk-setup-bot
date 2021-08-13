@@ -3,6 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command, Text
 
 from keyboards.inline import get_bot_functionality
+from keyboards.inline.callback_data import bot_functionality
 from loader import dp
 
 
@@ -13,3 +14,9 @@ async def back_to_main_menu(message: types.Message, state: FSMContext):
     await message.delete()
     await message.answer("<b>Главное меню</b>",
                          reply_markup=get_bot_functionality(message.from_user.id))
+
+
+@dp.callback_query_handler(bot_functionality.filter(functionality_name="answer_menu"))
+async def answer_main_menu(call: types.CallbackQuery):
+    await call.message.answer("<b>Главное меню</b>",
+                              reply_markup=get_bot_functionality(call.from_user.id))
