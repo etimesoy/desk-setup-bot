@@ -1,15 +1,14 @@
-from typing import Optional, List
+from typing import Optional
 
 import asyncpg
-from asyncpg import Connection
-from asyncpg.pool import Pool
+from asyncpg.exceptions import UniqueViolationError
 
 from data import config
 
 
 class Database:
     def __init__(self):
-        self.pool: Optional[Pool] = None
+        self.pool: Optional[asyncpg.Pool] = None
 
     async def create_pool(self):
         self.pool = await asyncpg.create_pool(
@@ -23,7 +22,7 @@ class Database:
     async def _execute(self, command: str, *args, fetch_all=False, fetch_row=False,
                        fetch_val=False, execute=False):
         async with self.pool.acquire() as connection:
-            connection: Connection
+            connection: asyncpg.Connection
             async with connection.transaction():
                 if fetch_all:
                     result = await connection.fetch(command, *args)
@@ -44,7 +43,17 @@ class Database:
             full_name VARCHAR(255) NOT NULL,
             username VARCHAR(255),
             email VARCHAR(255)
-        );
+        )
+        """
+        await self._execute(sql, execute=True)
+
+    async def _create_table_discounts(self):
+        sql = """
+        CREATE TABLE IF NOT EXISTS Discounts (
+            id SERIAL PRIMARY KEY,
+            telegram_id BIGINT NOT NULL UNIQUE REFERENCES Users(telegram_id),
+            amount BIGINT NOT NULL
+        )
         """
         await self._execute(sql, execute=True)
 
@@ -56,7 +65,7 @@ class Database:
             photo_link TEXT NOT NULL,
             price INTEGER NOT NULL,
             description TEXT
-        );
+        )
         """
         await self._execute(sql, execute=True)
 
@@ -67,12 +76,13 @@ class Database:
             user_telegram_id BIGINT NOT NULL REFERENCES USERS(telegram_id),
             product_id BIGINT NOT NULL REFERENCES PRODUCTS(id),
             product_quantity INTEGER NOT NULL
-        );
+        )
         """
         await self._execute(sql, execute=True)
 
     async def create_standard_tables(self):
         await self._create_table_users()
+        await self._create_table_discounts()
         await self._create_table_products()
         await self._create_table_baskets()
 
@@ -87,6 +97,7 @@ class Database:
 
     async def add_user(self, telegram_id: int, referrer_id: int,
                        full_name: str, username: str):
+        await self._add_discount_for_user(referrer_id)
         sql = "INSERT INTO Users (telegram_id, referrer_id, full_name, username) " \
               "VALUES ($1, $2, $3, $4) returning *"
         return await self._execute(sql, telegram_id, referrer_id, full_name, username, fetch_row=True)
@@ -110,6 +121,20 @@ class Database:
     async def update_user_username(self, username: str, telegram_id: int):
         sql = "UPDATE Users SET username = $1 WHERE telegram_id = $2"
         return await self._execute(sql, username, telegram_id, execute=True)
+
+    # section: Working with table Discounts
+
+    async def _add_discount_for_user(self, telegram_id: int):
+        sql = "INSERT INTO Discounts (telegram_id, amount) VALUES ($1, $2) returning *"
+        try:
+            await self._execute(sql, telegram_id, 10, execute=True)
+        except UniqueViolationError:
+            sql = "UPDATE Discounts SET discount = discount + $1 WHERE telegram_id = $2"
+            await self._execute(sql, 10, telegram_id, execute=True)
+
+    async def get_user_discount_amount(self, telegram_id: int):
+        sql = "SELECT amount FROM Discounts WHERE telegram_id = $1"
+        return await self._execute(sql, telegram_id, fetch_val=True)
 
     # section: Working with table Products
 

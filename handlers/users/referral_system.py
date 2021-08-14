@@ -16,6 +16,8 @@ async def show_referral_system(call: types.CallbackQuery):
         referrer = await bot.get_chat_member(referrer_id, referrer_id)
         referrer_username = referrer['user']['username']
         message_text = f"Вас пригласил пользователь @{referrer_username}"
+    discount_amount = await db.get_user_discount_amount(call.from_user.id)
+    message_text += f"\nРазмер вашей скидки: {discount_amount}"
     await call.message.answer(message_text, reply_markup=referral_system)
 
 
