@@ -60,7 +60,11 @@ async def buy_product(call: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state="enter_quantity")
 async def enter_quantity(message: types.Message, state: FSMContext):
-    quantity = int(message.text)  # TODO: обработать ввод не числа
+    try:
+        quantity = int(message.text)
+    except ValueError:
+        await message.answer("Неверное значение, введите заново")
+        return
     await state.update_data(product_quantity=quantity)
     await message.answer("Введите адрес доставки")
     await state.set_state("enter_address")
