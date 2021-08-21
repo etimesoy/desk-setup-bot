@@ -142,6 +142,10 @@ class Database:
         sql = "SELECT * FROM Products"
         return await self._execute(sql, fetch_all=True)
 
+    async def get_product_info(self, product_id: int):
+        sql = "SELECT name, photo_link, price, description FROM Products WHERE id = $1"
+        return await self._execute(sql, product_id, fetch_row=True)
+
     async def add_product(self, name: str, photo_link: str, price: int, description: str):
         sql = "INSERT INTO Products (name, photo_link, price, description) VALUES ($1, $2, $3, $4)"
         await self._execute(sql, name, photo_link, price, description, execute=True)

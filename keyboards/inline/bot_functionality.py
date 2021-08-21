@@ -20,6 +20,6 @@ def get_bot_functionality(user_id: int) -> InlineKeyboardMarkup:
                                             callback_data=bot_functionality.new("show_favourite"))
     keyboard.insert(favourite_button)
     choose_product_button = InlineKeyboardButton(text="Выбрать товар",
-                                                 callback_data=bot_functionality.new("choose_product"))
+                                                 switch_inline_query_current_chat="")
     keyboard.insert(choose_product_button)
     return keyboard
