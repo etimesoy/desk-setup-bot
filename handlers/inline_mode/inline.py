@@ -34,13 +34,14 @@ async def show_product(call: types.CallbackQuery, callback_data: dict, state: FS
     # проверить, находимся сейчас в личном чате с ботом или нет
 
     product_id = int(callback_data["id"])
-    await state.update_data(product_id=product_id)
     product = await db.get_product_info(product_id)
+    await state.update_data(product_id=product_id)
     await state.update_data(product_name=product["name"])
     await state.update_data(product_price=product["price"])
-    await call.bot.send_message(call.from_user.id,
-                                product["name"] + " - " + str(product["price"]) + '₽' +
-                                '\n' + product["description"] + '\n' + product['photo_link'],
+    message_text = product["name"] + " - " + str(product["price"]) + "₽\n" + \
+                   product["description"] + '\n' + \
+                   f"<a href='{product['photo_link']}'>thumbnail</a>"
+    await call.bot.send_message(call.from_user.id, message_text,
                                 reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
                                     types.InlineKeyboardButton("Купить", callback_data=inline_mode_product.new(
                                         callback_data["id"], "buy"

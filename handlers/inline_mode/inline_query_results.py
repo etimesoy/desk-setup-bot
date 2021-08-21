@@ -15,7 +15,7 @@ async def get_inline_results_for_query(query: str = "") -> List[types.InlineQuer
             title=product["name"] + " - " + str(product["price"]) + '₽',
             input_message_content=types.InputTextMessageContent(
                 product["name"] + " - " + str(product["price"]) + '₽' +
-                '\n' + product["photo_link"],
+                '\n' + f"<a href='{product['photo_link']}'>thumbnail</a>",
             ),
             reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
                 [
