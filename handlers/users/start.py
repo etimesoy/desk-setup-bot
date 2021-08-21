@@ -6,6 +6,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from handlers.inline_mode.inline import show_product
 from keyboards.inline import get_bot_functionality
 from keyboards.inline.referral_stuff import referral_buttons
 from keyboards.inline.callback_data import bot_functionality
@@ -32,8 +33,9 @@ async def bot_start_with_deep_link(message_or_call: Union[types.Message, types.C
                          f"Вот, что я умею:", reply_markup=get_bot_functionality(user_id))
 
 
+@dp.message_handler(CommandStart(deep_link=re.compile(r"^show_product-\d+$")))
 @dp.message_handler(CommandStart())
-async def bot_start_without_deep_link(message: types.Message,
+async def bot_start_without_deep_link(message: types.Message, state: FSMContext,
                                       user_id: int = None, user_full_name: str = None):
     if user_full_name is None:
         user_full_name = message.from_user.full_name
@@ -45,7 +47,12 @@ async def bot_start_without_deep_link(message: types.Message,
                              f"Чтобы пользоваться ботом, нужно зарегистрироваться в реферальной программе.\n"
                              f"Выбери способ:", reply_markup=referral_buttons)
     else:
-        await bot_start_with_deep_link(message, user['referrer_id'])
+        if message.get_args():
+            product_id = int(message.get_args().split('-')[-1])
+            callback_data = {"id": product_id}
+            await show_product(None, callback_data, state, message)
+        else:
+            await bot_start_with_deep_link(message, user['referrer_id'])
 
 
 @dp.callback_query_handler(bot_functionality.filter(functionality_name="check_channel_subscription"))
@@ -62,7 +69,7 @@ async def back_to_start(call: types.CallbackQuery, state: FSMContext):
     await state.reset_state()
     user_full_name = call.from_user.full_name
     user_id = call.from_user.id
-    await bot_start_without_deep_link(call.message, user_id, user_full_name)
+    await bot_start_without_deep_link(call.message, state, user_id, user_full_name)
 
 
 @dp.callback_query_handler(bot_functionality.filter(functionality_name="enter_referrer_id"))

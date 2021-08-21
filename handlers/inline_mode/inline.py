@@ -26,13 +26,12 @@ async def some_query(query: types.InlineQuery):
     if not await check_user(query):
         return
 
-    await query.answer(results=await get_inline_results_for_query(query.query), cache_time=1)
+    await query.answer(results=await get_inline_results_for_query(query.chat_type, query.query), cache_time=1)
 
 
 @dp.callback_query_handler(inline_mode_product.filter(action="show"))
-async def show_product(call: types.CallbackQuery, callback_data: dict, state: FSMContext):
-    # проверить, находимся сейчас в личном чате с ботом или нет
-
+async def show_product(call: types.CallbackQuery, callback_data: dict,
+                       state: FSMContext, message: types.Message = None):
     product_id = int(callback_data["id"])
     product = await db.get_product_info(product_id)
     await state.update_data(product_id=product_id)
@@ -41,12 +40,16 @@ async def show_product(call: types.CallbackQuery, callback_data: dict, state: FS
     message_text = product["name"] + " - " + str(product["price"]) + "₽\n" + \
                    product["description"] + '\n' + \
                    f"<a href='{product['photo_link']}'>thumbnail</a>"
-    await call.bot.send_message(call.from_user.id, message_text,
-                                reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[
-                                    types.InlineKeyboardButton("Купить", callback_data=inline_mode_product.new(
-                                        callback_data["id"], "buy"
-                                    ))
-                                ]]))
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[[
+        types.InlineKeyboardButton("Купить", callback_data=inline_mode_product.new(
+            callback_data["id"], "buy"
+        ))
+    ]])
+    if message:
+        await message.answer(message_text, reply_markup=markup)
+    else:
+        await call.bot.send_message(call.from_user.id, message_text,
+                                    reply_markup=markup)
 
 
 @dp.callback_query_handler(inline_mode_product.filter(action="buy"))
