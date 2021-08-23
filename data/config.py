@@ -14,5 +14,9 @@ DB_HOST = env.str("DB_HOST")
 DB_PORT = env.str("DB_PORT")
 DATABASE = env.str("DATABASE")
 
+QIWI_TOKEN = env.str("QIWI")
+WALLET_QIWI = env.str("WALLET")
+QIWI_PUBKEY = env.str("QIWI_P_PUB")
+
 POSTGRES_URI = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DATABASE}"
 DJANGO_SECRET_KEY = env.str("DJANGO_SECRET_KEY")

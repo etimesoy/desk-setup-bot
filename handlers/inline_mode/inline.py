@@ -2,10 +2,14 @@ import re
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
+from aiogram.utils.markdown import hlink, hcode
 
+from data import config
 from handlers.inline_mode import get_inline_results_for_query
+from keyboards.inline import paid_keyboard
 from keyboards.inline.callback_data import inline_mode_product
 from loader import dp, db
+from utils.misc.qiwi import Payment, NoPaymentFound, NotEnoughMoney
 
 
 async def check_user(query: types.InlineQuery) -> bool:
@@ -71,16 +75,52 @@ async def enter_quantity(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state="enter_address")
-async def enter_address(message: types.Message, state: FSMContext):
+async def create_invoice(message: types.Message, state: FSMContext):
     address = message.text
     await state.update_data(address=address)
     product = await state.get_data()
+    amount = int(product['product_quantity']) * int(product['product_price'])
+
+    payment = Payment(amount=amount)
+    payment.create()
 
     await message.answer('\n'.join([
         f"Товар: {product['product_name']}",
         f"Количество: {product['product_quantity']}",
-        f"Общая стоимость: {int(product['product_quantity']) * int(product['product_price'])}",
+        f"Общая стоимость: {amount}",
         f"Адрес: {product['address']}",
-        f"Оплатите"
-    ]))
-    await state.set_state("pay")
+        f"Оплатите не менее {amount:.2f}₽ по номеру телефона или по адресу",
+        "",
+        hlink(config.WALLET_QIWI, url=payment.invoice),
+        "И обязательно укажите ID платежа:",
+        hcode(payment.id)
+    ]), reply_markup=paid_keyboard)
+
+    await state.set_state("qiwi")
+    await state.update_data(payment=payment)
+
+
+@dp.callback_query_handler(text="cancel", state="qiwi")
+async def cancel_payment(call: types.CallbackQuery, state: FSMContext):
+    await call.message.edit_text("Отменено")
+    await state.finish()
+
+
+@dp.callback_query_handler(text="paid", state="qiwi")
+async def approve_payment(call: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    payment: Payment = data.get("payment")
+
+    try:
+        payment.check_payment()
+    except NoPaymentFound:
+        await call.message.answer("Транзакция не найдена.")
+        return
+    except NotEnoughMoney:
+        await call.message.answer("Оплаченная сума меньше необходимой.")
+        return
+    else:
+        await call.message.answer("Успешно оплачено")
+
+    await call.message.edit_reply_markup()
+    await state.finish()
